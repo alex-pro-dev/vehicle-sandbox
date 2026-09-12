@@ -1,0 +1,25 @@
+name: vehicle-sandbox
+services:
+  receiver:
+    image: tesla/fleet-telemetry:v0.9.4@sha256:28c8b9e244b842a3d7443567cfa385b4db20cf533b8dee3411ce6fe540eb67e2
+    platform: linux/amd64
+    # Isolated local fixture; allows the generated 0600 test key to be mounted.
+    user: "0:0"
+    volumes:
+      - ./infra/receiver.json:/etc/fleet-telemetry/config.json:ro
+      - ./.vehicle-sandbox/certs:/certs:ro
+    ports:
+      - "127.0.0.1:4443:4443"
+    depends_on:
+      redis:
+        condition: service_healthy
+  redis:
+    image: redis:8-alpine@sha256:09160599abd229764c0fb44cb6be640294e1d360a54b19985ab4843dcf2d90f1
+    command: redis-server --save "" --appendonly no
+    ports:
+      - "127.0.0.1:6399:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 1s
+      timeout: 1s
+      retries: 30

@@ -1,0 +1,29 @@
+{
+  "name": "vehicle-sandbox",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Deterministic OEM API and vehicle telemetry simulator",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "license": "MIT",
+  "scripts": {
+    "start": "node src/main.js",
+    "test": "node --test test/*.test.js",
+    "test:receiver": "node --test test/receiver.integration.js",
+    "certs": "node scripts/certs.js",
+    "up": "node scripts/up.js",
+    "up:odomojo": "node scripts/up.js --odomojo",
+    "demo": "node scripts/demo.js",
+    "test:odomojo": "node scripts/test-odomojo.js"
+  },
+  "dependencies": {
+    "flatbuffers": "25.9.23",
+    "protobufjs": "8.8.0",
+    "ws": "8.21.3"
+  },
+  "devDependencies": {
+    "redis": "6.2.1"
+  }
+}

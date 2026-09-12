@@ -1,57 +1,90 @@
 # Vehicle Sandbox
 
-A virtual garage for connected-car developers.
+A virtual garage for connected-car developers. Test direct OEM onboarding and
+telemetry integrations without a real vehicle.
 
-An open-source vehicle API simulator for testing direct OEM integrations,
-onboarding, telemetry, and commands without a real car.
+**Early runnable prototype: Tesla first, Odomojo as the first acceptance client.**
+One synthetic vehicle, OAuth consent and token lifecycle, discovery, simulated
+pairing, telemetry configuration, and deterministic driving are implemented.
+Location, VehicleSpeed, Soc and Odometer can travel through Tesla's official
+receiver over mTLS/WebSocket into Redis. No live OEM credentials are needed.
 
-## Status
+## Quick start
 
-Project initialization and design. No runnable simulator or OEM adapter is
-implemented yet. The features below describe the intended scope.
+Requires Node.js 24+. Docker Compose and OpenSSL are needed for the receiver.
 
-## Why
+```sh
+npm ci
+npm test
+npm run up
+```
 
-Connected-car applications depend on manufacturer-specific authentication,
-vehicle APIs, and telemetry delivery. Reproducing a sleeping vehicle, an expired
-token, or an interrupted charging session can require access to a real vehicle.
+This generates disposable local certificates, starts an isolated official Tesla
+receiver and Redis, and runs the sandbox on loopback. In another terminal:
 
-Vehicle Sandbox aims to make these situations reproducible on a developer's
-machine and in continuous integration.
+```sh
+npm run demo
+npm run test:receiver
+```
 
-## Intended capabilities
+The demo resets the garage, authorizes a synthetic account, pairs and configures
+the vehicle, and advances a 61-second drive. Its printed records show source
+timestamps and delivery acknowledgments. **The demo resets existing scenario
+state**, so use a separate run from application acceptance testing.
 
-- Native OEM API adapters with documented endpoint and behavior coverage.
-- Simulated authorization, consent, token lifecycle, and vehicle linking.
-- Consistent vehicle state across driving, parking, sleeping, and charging.
-- Telemetry delivery and command effects appropriate to each supported adapter.
-- Configurable failures, stale data, delays, and connection interruptions.
-- Deterministic scenarios with a controllable clock and resettable state.
-- A headless runner and a simple UI for controlling a virtual garage.
+For an HTTP-only simulator without Docker, use `npm start`; records accumulate
+in the control API without wire delivery. If you previously generated certificates,
+the HTTPS API is also available. Ctrl-C stops the Node listeners;
+`docker compose down` stops this project's receiver and Redis.
 
-Applications will point their test configuration at local emulator endpoints.
-Real OEM registration, ownership verification, and production key pairing still
-require validation against the relevant OEM service and supported vehicles.
+| Listener | Purpose |
+| --- | --- |
+| `http://localhost:8090` | Tesla-shaped authorization, token and Fleet API routes |
+| `https://localhost:8444` | Same API with the generated test CA, for clients that pin TLS |
+| `http://localhost:8099/control/state` | Separate scenario control and captured records |
+| `wss://localhost:4443/` | Official receiver, requires the synthetic client certificate |
+| `redis://localhost:6399` | Isolated receiver output, channel `odomojo_V_{SANDB0X0000000001}` |
 
-## Initial direction
+Test client ID: `sandbox-client`; test secret: `sandbox-secret`.
+Default registered callback: `http://localhost:8091/api/v1/oauth/tesla/callback`.
+API listeners bind to `127.0.0.1`. This unauthenticated control plane is intended
+for a developer machine or isolated CI job, not a public deployment.
 
-Start with a small scenario engine and two OEM integrations. Adapter selection
-and implementation language are still to be decided. Evaluate existing projects
-before implementing overlapping functionality.
+## Odomojo acceptance
 
-See [the roadmap](docs/ROADMAP.md) for the first milestones.
+See [the Odomojo guide](examples/odomojo/README.md). With its small endpoint
+configuration change applied and local Docker backend prepared:
 
-## Contributing
+```sh
+npm run up:odomojo
+# In another terminal:
+npm run test:odomojo -- /path/to/odoMojo
+```
 
-Useful contributions include reproducible integration problems, public API
-references, proposed scenarios, and sanitized sample payloads. Include the API
-version and relevant region or vehicle capabilities when known.
+The external test uses Odomojo's authenticated routes and real provider HTTP
+calls, the official receiver, and its normal decoder/ingestion services with an
+in-memory test database. It covers explicit activation, token refresh, duplicate
+handling, missing location, and rejection after pause/resume or revocation.
+It does not drive the browser UI or run the long-lived `tesla:consume` process.
 
-Do not submit credentials, tokens, private keys, real VINs, precise personal
-location histories, or proprietary material you cannot share. Describe whether
-behavior was observed on a real vehicle, documented by the OEM, or assumed.
+## Coverage and limits
 
-## License
+- [Control API and scenarios](docs/CONTROL_API.md)
+- [MVP scope and acceptance gates](docs/MVP.md)
+- [Compatibility matrix and upstream references](docs/COMPATIBILITY.md)
+- [Roadmap](docs/ROADMAP.md)
 
-[MIT](LICENSE). Independent community project; not affiliated with any vehicle
-manufacturer. OEM names identify the integrations being discussed.
+Pairing is an explicit test flag. The sandbox acts as the API/proxy boundary;
+it does not implement Tesla ownership verification, real key pairing, signed
+vehicle commands, or the actual command proxy. Only the documented subset is
+supported; other endpoints fail explicitly. No real-vehicle validation is claimed.
+
+## Contributing and license
+
+Reproducible failures, new adapter contracts, and synthetic fixtures are welcome.
+Keep credentials, real VINs, private keys, customer data and personal location
+histories out of contributions. State whether behavior is documented, observed
+on a real vehicle, or an approximation.
+
+[MIT](LICENSE), except the [vendored Tesla schema](vendor/tesla/README.md), which
+retains Apache-2.0. Independent community project, unaffiliated with any OEM.

@@ -1,0 +1,31 @@
+name: Tests
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  sandbox:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run certs
+      - run: docker compose up -d
+      - name: Wait for receiver
+        run: |
+          for attempt in $(seq 1 30); do
+            if nc -z 127.0.0.1 4443; then exit 0; fi
+            sleep 1
+          done
+          docker compose logs receiver
+          exit 1
+      - run: npm run test:receiver
+      - if: failure()
+        run: docker compose logs --tail=100
+      - if: always()
+        run: docker compose down

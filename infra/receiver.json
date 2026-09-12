@@ -1,0 +1,9 @@
+{
+  "host": "0.0.0.0", "port": 4443, "status_port": 8080,
+  "log_level": "info", "json_log_enable": true, "namespace": "odomojo",
+  "transmit_decoded_records": true,
+  "records": {"V": ["redis"]},
+  "reliable_ack_sources": {"V": "redis"},
+  "redis": {"addrs": ["redis:6379"], "publish_vin_topics": true},
+  "tls": {"ca_file": "/certs/ca.crt", "server_cert": "/certs/server.crt", "server_key": "/certs/server.key"}
+}
